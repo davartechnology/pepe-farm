@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import BottomNav from "@/components/BottomNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,10 @@ export default function RootLayout({
         {/* TADS - Remplace par ton vrai code TADS une fois récupéré */}
         {/* <Script src="TON_SCRIPT_TADS" strategy="afterInteractive" /> */}
       </head>
-      <body className="bg-[#1A1400]">{children}</body>
+      <body className="bg-[#1A1400]">
+        {children}
+        <BottomNav />
+      </body>
     </html>
   );
 }
