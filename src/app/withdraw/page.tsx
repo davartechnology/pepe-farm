@@ -5,7 +5,7 @@ import AdBanner from "@/components/AdBanner";
 
 export default function WithdrawPage() {
   const [balance, setBalance] = useState(0);
-  const [minWithdrawal, setMinWithdrawal] = useState(1200);
+  const [minWithdrawal] = useState(1200);
   const [email, setEmail] = useState("");
   const [initData, setInitData] = useState("");
   const [loading, setLoading] = useState(true);
@@ -14,13 +14,9 @@ export default function WithdrawPage() {
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
-    if (!tg) {
-      setLoading(false);
-      return;
-    }
+    if (!tg) { setLoading(false); return; }
     tg.ready();
     setInitData(tg.initData);
-
     fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -38,20 +34,15 @@ export default function WithdrawPage() {
 
   async function handleWithdraw() {
     if (!email) {
-      setMessage({ type: "error", text: "Renseigne ton email/adresse FaucetPay" });
+      setMessage({ type: "error", text: "Renseigne ton email FaucetPay" });
       return;
     }
     if (balance < minWithdrawal) {
-      setMessage({
-        type: "error",
-        text: `Solde insuffisant. Minimum : ${minWithdrawal} PEPE`,
-      });
+      setMessage({ type: "error", text: `Minimum : ${minWithdrawal} PEPE` });
       return;
     }
-
     setSubmitting(true);
     setMessage(null);
-
     try {
       const res = await fetch("/api/withdraw", {
         method: "POST",
@@ -59,16 +50,14 @@ export default function WithdrawPage() {
         body: JSON.stringify({ initData, faucetpayEmail: email }),
       });
       const data = await res.json();
-
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "Erreur lors du retrait" });
+        setMessage({ type: "error", text: data.error || "Erreur" });
         return;
       }
-
       setMessage({ type: "success", text: `✅ ${data.amount} PEPE envoyés sur FaucetPay !` });
       setBalance(0);
-    } catch (err) {
-      setMessage({ type: "error", text: "Erreur réseau, réessaie" });
+    } catch {
+      setMessage({ type: "error", text: "Erreur réseau" });
     } finally {
       setSubmitting(false);
     }
@@ -76,24 +65,28 @@ export default function WithdrawPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-gray-400">Chargement...</p>
+      <main className="min-h-screen bg-[#1A1400] flex items-center justify-center pb-20">
+        <p className="text-yellow-400">Chargement...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-4 py-6">
-      <a href="/" className="text-green-400 text-sm mb-4 inline-block">← Retour</a>
-      <h1 className="text-2xl font-bold text-green-400 mb-4">💸 Retrait</h1>
+    <main className="min-h-screen bg-[#1A1400] text-white px-4 pt-6 pb-24">
+      <h1 className="text-2xl font-black mb-1" style={{ color: "#FFD700" }}>💸 Retrait</h1>
+      <p className="text-yellow-700 text-sm mb-5">Encaisse tes PEPE sur FaucetPay</p>
 
-      <div className="bg-zinc-900 border border-green-500/30 rounded-2xl p-6 mb-6 text-center">
-        <p className="text-gray-400 text-sm mb-1">Solde disponible</p>
-        <p className="text-3xl font-bold text-green-400">{balance.toLocaleString()} PEPE</p>
-        <p className="text-xs text-gray-500 mt-2">Minimum de retrait : {minWithdrawal} PEPE</p>
+      {/* Carte solde */}
+      <div className="rounded-2xl p-5 mb-5 text-center"
+        style={{ background: "linear-gradient(135deg, #2A2000, #3D2E00)", border: "1px solid #B8860B" }}>
+        <p className="text-yellow-600 text-xs uppercase tracking-widest mb-1">Solde disponible</p>
+        <p className="text-4xl font-black" style={{ color: "#FFD700" }}>{balance.toLocaleString()}</p>
+        <p className="text-yellow-500 font-bold">PEPE</p>
+        <p className="text-yellow-800 text-xs mt-2">Minimum : {minWithdrawal} PEPE</p>
       </div>
 
-      <label className="text-sm text-gray-400 block mb-2">
+      {/* Champ email */}
+      <label className="text-yellow-600 text-xs uppercase tracking-widest block mb-2">
         Email ou adresse FaucetPay
       </label>
       <input
@@ -101,27 +94,30 @@ export default function WithdrawPage() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="ton-email@exemple.com"
-        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white mb-4"
+        className="w-full rounded-xl px-4 py-3 mb-4 text-white text-sm"
+        style={{ background: "#2A2000", border: "1px solid #3D2E00", outline: "none" }}
       />
 
+      {/* Bouton retrait */}
       <button
         onClick={handleWithdraw}
         disabled={submitting || balance < minWithdrawal}
-        className={`w-full py-4 rounded-2xl font-bold text-lg ${
-          submitting || balance < minWithdrawal
-            ? "bg-zinc-800 text-gray-500 cursor-not-allowed"
-            : "bg-green-500 text-black active:scale-95"
-        }`}
+        className="w-full py-4 rounded-2xl font-black text-lg transition-all mb-4"
+        style={{
+          background: submitting || balance < minWithdrawal
+            ? "#2A2000"
+            : "linear-gradient(135deg, #FFD700, #B8860B)",
+          color: submitting || balance < minWithdrawal ? "#4A3800" : "#1A1400",
+          border: submitting || balance < minWithdrawal ? "1px solid #3D2E00" : "none",
+        }}
       >
-        {submitting ? "Envoi en cours..." : "Retirer maintenant"}
+        {submitting ? "Envoi en cours..." : "💸 Retirer maintenant"}
       </button>
 
       {message && (
-        <p
-          className={`mt-4 text-sm text-center ${
-            message.type === "success" ? "text-green-300" : "text-red-400"
-          }`}
-        >
+        <p className={`text-sm text-center font-medium mb-4 ${
+          message.type === "success" ? "text-yellow-400" : "text-red-400"
+        }`}>
           {message.text}
         </p>
       )}

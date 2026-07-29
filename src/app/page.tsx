@@ -6,7 +6,8 @@ import AdBanner from "@/components/AdBanner";
 declare global {
   interface Window {
     Telegram: any;
-    show_11174625?: (config?: any) => Promise<void>; // SDK Monetag (Zone ID 11174625)
+    // Remplace TADS_ZONE_ID par ton vrai ID une fois récupéré
+    showTadsAd?: () => Promise<void>;
   }
 }
 
@@ -25,7 +26,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [cooldownMs, setCooldownMs] = useState(0);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [initData, setInitData] = useState<string>("");
 
   useEffect(() => {
@@ -34,23 +35,13 @@ export default function Home() {
       tg.ready();
       tg.expand();
       setInitData(tg.initData);
-
       const startParamOfficial = tg.initDataUnsafe?.start_param;
-
       const urlParams = new URLSearchParams(window.location.search);
-      const startParamFromUrl =
-        urlParams.get("startapp") || urlParams.get("tgWebAppStartParam");
-
+      const startParamFromUrl = urlParams.get("startapp") || urlParams.get("tgWebAppStartParam");
       const referralCode = startParamOfficial || startParamFromUrl || undefined;
-
-      console.log("DEBUG - start_param officiel:", startParamOfficial);
-      console.log("DEBUG - startapp depuis URL:", startParamFromUrl);
-      console.log("DEBUG - referralCode final:", referralCode);
-      console.log("DEBUG - URL complète:", window.location.href);
-
       authenticate(tg.initData, referralCode);
     } else {
-      setMessage("⚠️ Ouvre cette application depuis Telegram");
+      setMessage({ text: "⚠️ Ouvre cette application depuis Telegram", type: "error" });
       setLoading(false);
     }
   }, []);
@@ -71,17 +62,15 @@ export default function Home() {
         body: JSON.stringify({ initData: initDataStr, referralCode }),
       });
       const data = await res.json();
-
       if (!res.ok) {
-        setMessage(data.error || "Erreur d'authentification");
+        setMessage({ text: data.error || "Erreur d'authentification", type: "error" });
         setLoading(false);
         return;
       }
-
       setUser(data.user);
       setCooldownMs(data.remainingCooldownMs || 0);
-    } catch (err) {
-      setMessage("Erreur de connexion au serveur");
+    } catch {
+      setMessage({ text: "Erreur de connexion au serveur", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -89,23 +78,14 @@ export default function Home() {
 
   const handleClaim = useCallback(async () => {
     if (!initData || claiming || cooldownMs > 0) return;
-
     setClaiming(true);
     setMessage(null);
 
     try {
-      // Monetag - Format Rewarded (Zone ID 11174625)
-      // La promesse ne se résout QUE si la pub est entièrement visionnée.
-      // Si l'user quitte trop tôt ou si aucune pub n'est dispo, ça rejette -> pas de claim.
-      if (typeof window.show_11174625 === "function") {
-        try {
-          await window.show_11174625();
-        } catch (adErr) {
-          setMessage("⚠️ Regarde la publicité en entier pour miner du PEPE");
-          setClaiming(false);
-          return;
-        }
-      }
+      // TADS - Remplace par l'appel réel à TADS une fois le code récupéré
+      // if (typeof window.showTadsAd === "function") {
+      //   await window.showTadsAd();
+      // }
 
       const res = await fetch("/api/claim", {
         method: "POST",
@@ -115,23 +95,19 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.remainingMs) {
-          setCooldownMs(data.remainingMs);
-        }
-        setMessage(data.error || "Erreur lors de la réclamation");
+        if (data.remainingMs) setCooldownMs(data.remainingMs);
+        setMessage({ text: data.error || "Erreur lors de la réclamation", type: "error" });
         return;
       }
 
-      setUser((prev) =>
-        prev ? { ...prev, balance: data.newBalance } : prev
-      );
+      setUser((prev) => prev ? { ...prev, balance: data.newBalance } : prev);
       const nextClaimMs = data.nextClaimAt
         ? Math.max(0, new Date(data.nextClaimAt).getTime() - Date.now())
         : 60 * 60 * 1000;
       setCooldownMs(nextClaimMs);
-      setMessage(`✅ +${data.claimedAmount} PEPE minés !`);
-    } catch (err) {
-      setMessage("Erreur réseau, réessaie");
+      setMessage({ text: `✅ +${data.claimedAmount} PEPE récoltés !`, type: "success" });
+    } catch {
+      setMessage({ text: "Erreur réseau, réessaie", type: "error" });
     } finally {
       setClaiming(false);
     }
@@ -146,65 +122,81 @@ export default function Home() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-green-400">
-        <p>Chargement...</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#1A1400]">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-bounce">🌾</div>
+          <p className="text-yellow-400 font-medium">Chargement...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-black text-white px-4 py-8">
-      <h1 className="text-3xl font-bold text-green-400 mb-1">🐸 PEPE MINE</h1>
-      <p className="text-sm text-gray-400 mb-8">Mine, partage, retire.</p>
+    <main className="flex min-h-screen flex-col items-center bg-[#1A1400] text-white px-4 pt-8 pb-24">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="text-5xl mb-2">🌾</div>
+        <h1 className="text-3xl font-black tracking-tight" style={{ color: "#FFD700" }}>
+          PEPE FARM
+        </h1>
+        <p className="text-yellow-700 text-sm mt-1">Récolte, partage, encaisse.</p>
+      </div>
 
       {user ? (
         <>
-          <div className="w-full max-w-sm bg-zinc-900 border border-green-500/30 rounded-2xl p-6 mb-6 text-center">
-            <p className="text-gray-400 text-sm mb-1">Solde</p>
-            <p className="text-4xl font-bold text-green-400">
-              {user.balance.toLocaleString()} <span className="text-lg">PEPE</span>
+          {/* Carte solde */}
+          <div className="w-full max-w-sm rounded-2xl p-6 mb-6 text-center relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #2A2000 0%, #3D2E00 100%)", border: "1px solid #B8860B" }}>
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10"
+              style={{ background: "#FFD700", transform: "translate(30%, -30%)" }} />
+            <p className="text-yellow-600 text-sm mb-1 uppercase tracking-widest text-xs">Solde</p>
+            <p className="text-5xl font-black" style={{ color: "#FFD700" }}>
+              {user.balance.toLocaleString()}
             </p>
-            <p className="text-gray-500 text-xs mt-2">
-              Total miné : {user.totalMined.toLocaleString()} PEPE
-            </p>
+            <p className="text-yellow-500 text-lg font-bold mt-1">PEPE</p>
+            <div className="mt-3 pt-3 border-t border-yellow-900/50">
+              <p className="text-yellow-700 text-xs">
+                Total récolté : {user.totalMined.toLocaleString()} PEPE
+              </p>
+            </div>
           </div>
 
+          {/* Bouton Farm */}
           <button
             onClick={handleClaim}
             disabled={claiming || cooldownMs > 0}
-            className={`w-full max-w-sm py-4 rounded-2xl font-bold text-lg transition ${
-              cooldownMs > 0
-                ? "bg-zinc-800 text-gray-500 cursor-not-allowed"
-                : "bg-green-500 text-black active:scale-95"
-            }`}
+            className="w-full max-w-sm py-5 rounded-2xl font-black text-xl transition-all relative overflow-hidden"
+            style={{
+              background: cooldownMs > 0
+                ? "#2A2000"
+                : "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
+              color: cooldownMs > 0 ? "#4A3800" : "#1A1400",
+              border: cooldownMs > 0 ? "1px solid #3D2E00" : "none",
+              boxShadow: cooldownMs > 0 ? "none" : "0 4px 20px rgba(255, 215, 0, 0.3)",
+            }}
           >
             {claiming
-              ? "Minage en cours..."
+              ? "🌾 Récolte en cours..."
               : cooldownMs > 0
               ? `⏱ ${formatCooldown(cooldownMs)}`
-              : "⛏️ Miner 200 PEPE"}
+              : "🌾 Récolter 300 PEPE"}
           </button>
 
           {message && (
-            <p className="mt-4 text-sm text-center text-green-300">{message}</p>
+            <p className={`mt-4 text-sm text-center font-medium ${
+              message.type === "success" ? "text-yellow-400" : "text-red-400"
+            }`}>
+              {message.text}
+            </p>
           )}
 
-          <div className="w-full max-w-sm grid grid-cols-2 gap-3 mt-8">
-            <a href="/referral" className="bg-zinc-900 border border-zinc-700 rounded-xl py-3 text-center text-sm">
-              👥 Parrainage
-            </a>
-            <a href="/withdraw" className="bg-zinc-900 border border-zinc-700 rounded-xl py-3 text-center text-sm">
-              💸 Retrait
-            </a>
-            <a href="/history" className="bg-zinc-900 border border-zinc-700 rounded-xl py-3 text-center text-sm col-span-2">
-              📜 Historique
-            </a>
+          {/* Bannière pub Adsterra */}
+          <div className="mt-6 w-full max-w-sm">
+            <AdBanner adKey="efc8eae7c8e7d236f7bf531d02d12e8d" />
           </div>
-
-          <AdBanner adKey="efc8eae7c8e7d236f7bf531d02d12e8d" />
         </>
       ) : (
-        <p className="text-red-400">{message}</p>
+        <p className="text-red-400 text-center">{message?.text}</p>
       )}
     </main>
   );
