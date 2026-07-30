@@ -66,7 +66,7 @@ export default function WithdrawPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[#1A1400] flex items-center justify-center pb-20">
-        <p className="text-yellow-400">Chargement...</p>
+        <p className="text-yellow-400">Chargement.....</p>
       </main>
     );
   }
