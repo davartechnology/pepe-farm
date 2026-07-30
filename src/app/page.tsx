@@ -179,7 +179,7 @@ export default function Home() {
               ? "🌾 Récolte en cours..."
               : cooldownMs > 0
               ? `⏱ ${formatCooldown(cooldownMs)}`
-              : "🌾 Récolter 300 PEPE"}
+              : "🌾 Récolter 100 PEPE"}
           </button>
 
           {message && (
