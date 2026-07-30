@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "bot" : "tsx bot/dev.ts",
+    "bot": "tsx bot/dev.ts",
     "set-webhook": "tsx bot/set-webhook.ts"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-tads-widget": "^0.1.0",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
