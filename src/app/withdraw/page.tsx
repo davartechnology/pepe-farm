@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AdBanner from "@/components/AdBanner";
+import TadsStaticBanner from "@/components/TadsStaticBanner";
 
 export default function WithdrawPage() {
   const [balance, setBalance] = useState(0);
-  const [minWithdrawal] = useState(1000);
+  const [minWithdrawal] = useState(1200);
   const [email, setEmail] = useState("");
   const [initData, setInitData] = useState("");
   const [loading, setLoading] = useState(true);
@@ -122,7 +122,7 @@ export default function WithdrawPage() {
         </p>
       )}
 
-      <AdBanner adKey="efc8eae7c8e7d236f7bf531d02d12e8d" />
+      <TadsStaticBanner />
     </main>
   );
 }
