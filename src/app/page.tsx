@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { TadsWidget, renderTadsWidget } from "react-tads-widget";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { renderTadsWidget, TadsWidget } from "react-tads-widget";
 import TadsBanner from "@/components/TadsBanner";
 
 interface UserData {
@@ -14,19 +14,18 @@ interface UserData {
   lastClaimAt: string | null;
 }
 
-// IDs de tes widgets TADS
-const TADS_TGB_ID = "11244";       // Text-Graphic Block (TGB) - pour le claim
-const TADS_FULLSCREEN_ID = "11246"; // Fullscreen - pour les bannières
+const TADS_FULLSCREEN_ID = "11246"; // Fullscreen - bloquant, déclenche le claim après visionnage
+const TADS_TGB_ID = "11244";        // TGB statique - affiché en bas de page
 
 export default function Home() {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
-  const [adWatched, setAdWatched] = useState(false);
   const [cooldownMs, setCooldownMs] = useState(0);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [initData, setInitData] = useState<string>("");
-  const [showTadsAd, setShowTadsAd] = useState(false);
+  const [waitingForAd, setWaitingForAd] = useState(false);
+  const claimRef = useRef<string>("");
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -68,6 +67,7 @@ export default function Home() {
       }
       setUser(data.user);
       setCooldownMs(data.remainingCooldownMs || 0);
+      claimRef.current = initDataStr;
     } catch {
       setMessage({ text: "Erreur de connexion au serveur", type: "error" });
     } finally {
@@ -75,37 +75,42 @@ export default function Home() {
     }
   }
 
-  // Appelé quand l'user regarde la pub TGB jusqu'au bout
-  const onAdClicked = useCallback(() => {
-    setAdWatched(true);
-    setShowTadsAd(false);
-    // Déclenche automatiquement le claim après la pub
-    processClaim();
-  }, [initData]);
+  // Appelé UNIQUEMENT après que l'user a vu la pub fullscreen en entier
+  const onAdShown = useCallback(async () => {
+    setWaitingForAd(false);
+    await processClaim();
+  }, []);
 
+  // Si pas de pub disponible : on informe l'user mais on NE CREDITE PAS
+  // (pour ne jamais distribuer des PEPE sans revenus publicitaires)
   const onAdsNotFound = useCallback(() => {
-    // Si pas de pub disponible, on permet quand même de claim
-    setAdWatched(true);
-    setShowTadsAd(false);
-    processClaim();
-  }, [initData]);
+    setWaitingForAd(false);
+    setClaiming(false);
+    setMessage({
+      text: "⚠️ Aucune publicité disponible pour toi en ce moment. Réessaie dans quelques minutes.",
+      type: "error"
+    });
+  }, []);
 
   const handleClaimButton = useCallback(() => {
-    if (!initData || claiming || cooldownMs > 0) return;
-    // Affiche la pub TADS TGB avant de claim
-    setShowTadsAd(true);
-  }, [initData, claiming, cooldownMs]);
-
-  const processClaim = useCallback(async () => {
-    if (!initData) return;
+    if (!initData || claiming || cooldownMs > 0 || waitingForAd) return;
     setClaiming(true);
     setMessage(null);
+    setWaitingForAd(true);
 
+    // Déclenche la pub fullscreen TADS — bloque l'écran jusqu'à visionnage complet
+    renderTadsWidget({
+      id: TADS_FULLSCREEN_ID,
+      type: "fullscreen",
+    });
+  }, [initData, claiming, cooldownMs, waitingForAd]);
+
+  async function processClaim() {
     try {
       const res = await fetch("/api/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({ initData: claimRef.current }),
       });
       const data = await res.json();
 
@@ -120,14 +125,13 @@ export default function Home() {
         ? Math.max(0, new Date(data.nextClaimAt).getTime() - Date.now())
         : 60 * 60 * 1000;
       setCooldownMs(nextClaimMs);
-      setAdWatched(false);
       setMessage({ text: `✅ +${data.claimedAmount} PEPE récoltés !`, type: "success" });
     } catch {
       setMessage({ text: "Erreur réseau, réessaie", type: "error" });
     } finally {
       setClaiming(false);
     }
-  }, [initData]);
+  }
 
   function formatCooldown(ms: number) {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -161,10 +165,17 @@ export default function Home() {
       {user ? (
         <>
           {/* Carte solde */}
-          <div className="w-full max-w-sm rounded-2xl p-6 mb-6 text-center relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #2A2000 0%, #3D2E00 100%)", border: "1px solid #B8860B" }}>
-            <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10"
-              style={{ background: "#FFD700", transform: "translate(30%, -30%)" }} />
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 mb-6 text-center relative overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #2A2000 0%, #3D2E00 100%)",
+              border: "1px solid #B8860B",
+            }}
+          >
+            <div
+              className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10"
+              style={{ background: "#FFD700", transform: "translate(30%, -30%)" }}
+            />
             <p className="text-yellow-600 text-xs uppercase tracking-widest mb-1">Solde</p>
             <p className="text-5xl font-black" style={{ color: "#FFD700" }}>
               {user.balance.toLocaleString()}
@@ -177,57 +188,75 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Widget TADS TGB - visible seulement quand l'user clique sur "Récolter" */}
-          {showTadsAd && (
-            <div className="w-full max-w-sm mb-4 rounded-xl overflow-hidden"
-              style={{ border: "1px solid #B8860B" }}>
-              <p className="text-yellow-600 text-xs text-center py-2 bg-[#2A2000]">
-                👀 Regarde la pub pour récolter tes PEPE
+          {/* Message d'attente pub */}
+          {waitingForAd && (
+            <div
+              className="w-full max-w-sm rounded-xl p-4 mb-4 text-center"
+              style={{ background: "#2A2000", border: "1px solid #B8860B" }}
+            >
+              <p className="text-yellow-400 text-sm font-bold animate-pulse">
+                📺 Publicité en cours... Regarde jusqu'au bout pour recevoir tes PEPE !
               </p>
-              <TadsWidget
-                id={TADS_TGB_ID}
-                type="static"
-                debug={false}
-                onClickReward={onAdClicked}
-                onAdsNotFound={onAdsNotFound}
-              />
             </div>
           )}
 
           {/* Bouton Farm */}
-          {!showTadsAd && (
-            <button
-              onClick={handleClaimButton}
-              disabled={claiming || cooldownMs > 0}
-              className="w-full max-w-sm py-5 rounded-2xl font-black text-xl transition-all"
-              style={{
-                background: cooldownMs > 0
+          <button
+            onClick={handleClaimButton}
+            disabled={claiming || cooldownMs > 0 || waitingForAd}
+            className="w-full max-w-sm py-5 rounded-2xl font-black text-xl transition-all"
+            style={{
+              background:
+                cooldownMs > 0 || waitingForAd
                   ? "#2A2000"
                   : "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
-                color: cooldownMs > 0 ? "#4A3800" : "#1A1400",
-                border: cooldownMs > 0 ? "1px solid #3D2E00" : "none",
-                boxShadow: cooldownMs > 0 ? "none" : "0 4px 20px rgba(255, 215, 0, 0.3)",
-              }}
-            >
-              {claiming
-                ? "🌾 Récolte en cours..."
-                : cooldownMs > 0
-                ? `⏱ ${formatCooldown(cooldownMs)}`
-                : "🌾 Récolter 300 PEPE"}
-            </button>
-          )}
+              color: cooldownMs > 0 || waitingForAd ? "#4A3800" : "#1A1400",
+              border:
+                cooldownMs > 0 || waitingForAd ? "1px solid #3D2E00" : "none",
+              boxShadow:
+                cooldownMs > 0 || waitingForAd
+                  ? "none"
+                  : "0 4px 20px rgba(255, 215, 0, 0.3)",
+            }}
+          >
+            {waitingForAd
+              ? "📺 Pub en cours..."
+              : claiming
+              ? "🌾 Récolte en cours..."
+              : cooldownMs > 0
+              ? `⏱ ${formatCooldown(cooldownMs)}`
+              : "🌾 Récolter 300 PEPE"}
+          </button>
 
           {message && (
-            <p className={`mt-4 text-sm text-center font-medium ${
-              message.type === "success" ? "text-yellow-400" : "text-red-400"
-            }`}>
+            <p
+              className={`mt-4 text-sm text-center font-medium ${
+                message.type === "success" ? "text-yellow-400" : "text-red-400"
+              }`}
+            >
               {message.text}
             </p>
           )}
 
-          {/* Bannière TADS Fullscreen */}
+          {/* Widget TADS Fullscreen caché - géré par renderTadsWidget */}
+          <div className="hidden">
+            <TadsWidget
+              id={TADS_FULLSCREEN_ID}
+              type="fullscreen"
+              debug={false}
+              onShowReward={onAdShown}
+              onAdsNotFound={onAdsNotFound}
+            />
+          </div>
+
+          {/* TGB statique en bas de page */}
           <div className="mt-6 w-full max-w-sm">
-            <TadsBanner widgetId={TADS_FULLSCREEN_ID} />
+            <TadsWidget
+              id={TADS_TGB_ID}
+              type="static"
+              debug={false}
+              onAdsNotFound={() => {}}
+            />
           </div>
         </>
       ) : (
