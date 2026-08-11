@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import BottomNav from "@/components/BottomNav";
 import TadsProvider from "@/components/TadsProvider";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "PEPE FARM",
