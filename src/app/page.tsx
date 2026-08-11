@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useAdsgram } from "@/lib/useAdsgram";
 
 interface UserData {
   id: string;
@@ -12,8 +11,6 @@ interface UserData {
   totalMined: number;
   lastClaimAt: string | null;
 }
-
-const ADSGRAM_BLOCK_ID = "42277";
 
 export default function Home() {
   const [user, setUser] = useState<UserData | null>(null);
@@ -103,24 +100,30 @@ export default function Home() {
     }
   }, [initData]);
 
-  const onAdError = useCallback(() => {
-    // Pas de pub vue en entier => pas de claim
-    setClaiming(false);
-    setMessage({ text: "⚠️ Regarde la publicité en entier pour récolter tes PEPE", type: "error" });
-  }, []);
-
-  const showAd = useAdsgram({
-    blockId: ADSGRAM_BLOCK_ID,
-    onReward: processClaim,
-    onError: onAdError,
-  });
-
   const handleClaimButton = useCallback(() => {
     if (!initData || claiming || cooldownMs > 0) return;
     setClaiming(true);
     setMessage(null);
-    showAd();
-  }, [initData, claiming, cooldownMs, showAd]);
+
+    const showGiga = (window as any).showGiga;
+    if (typeof showGiga !== "function") {
+      // Script pas encore chargé => traité comme un échec, jamais un succès silencieux
+      setClaiming(false);
+      setMessage({ text: "⚠️ Regarde la publicité en entier pour récolter tes PEPE", type: "error" });
+      return;
+    }
+
+    showGiga()
+      .then(() => {
+        // Pub vue en entier -> on peut créditer
+        processClaim();
+      })
+      .catch(() => {
+        // Refus / pas de pub / erreur -> aucun claim
+        setClaiming(false);
+        setMessage({ text: "⚠️ Regarde la publicité en entier pour récolter tes PEPE", type: "error" });
+      });
+  }, [initData, claiming, cooldownMs, processClaim]);
 
   function formatCooldown(ms: number) {
     const totalSeconds = Math.ceil(ms / 1000);

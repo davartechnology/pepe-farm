@@ -21,7 +21,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
         <Script
-          src="https://sad.adsgram.ai/js/sad.min.js"
+          src="https://ad.gigapub.tech/script?id=7684"
           strategy="beforeInteractive"
         />
       </head>
