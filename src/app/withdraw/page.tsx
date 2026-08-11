@@ -5,7 +5,7 @@ import TadsStaticBanner from "@/components/TadsStaticBanner";
 
 export default function WithdrawPage() {
   const [balance, setBalance] = useState(0);
-  const [minWithdrawal] = useState(1200);
+  const [minWithdrawal] = useState(200);
   const [email, setEmail] = useState("");
   const [initData, setInitData] = useState("");
   const [loading, setLoading] = useState(true);
