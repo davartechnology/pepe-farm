@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import BottomNav from "@/components/BottomNav";
-import TadsProvider from "@/components/TadsProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,12 +20,14 @@ export default function RootLayout({
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
+        <Script
+          src="https://sad.adsgram.ai/js/sad.min.js"
+          strategy="beforeInteractive"
+        />
       </head>
       <body className="bg-background">
-        <TadsProvider>
-          {children}
-          <BottomNav />
-        </TadsProvider>
+        {children}
+        <BottomNav />
       </body>
     </html>
   );

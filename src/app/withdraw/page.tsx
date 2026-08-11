@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import TadsStaticBanner from "@/components/TadsStaticBanner";
 
 export default function WithdrawPage() {
   const [balance, setBalance] = useState(0);
@@ -121,8 +120,6 @@ export default function WithdrawPage() {
           {message.text}
         </p>
       )}
-
-      <TadsStaticBanner />
     </main>
   );
 }
