@@ -1,23 +1,33 @@
-"use client";
+import type { Metadata } from "next";
+import Script from "next/script";
+import BottomNav from "@/components/BottomNav";
+import TadsProvider from "@/components/TadsProvider";
+import "./globals.css";
 
-import { TadsWidget } from "react-tads-widget";
+export const metadata: Metadata = {
+  title: "PEPE FARM",
+  description: "Farm des PEPE gratuitement et retire sur FaucetPay",
+};
 
-interface TadsBannerProps {
-  widgetId: string;
-}
-
-export default function TadsBanner({ widgetId }: TadsBannerProps) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
-      style={{ background: "var(--card)", border: "1px solid var(--border)", minHeight: "90px" }}
-    >
-      <TadsWidget
-        id={widgetId}
-        type="static"
-        debug={false}
-        onAdsNotFound={() => {}}
-      />
-    </div>
+    <html lang="fr">
+      <head>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+      </head>
+      <body className="bg-background">
+        <TadsProvider>
+          {children}
+          <BottomNav />
+        </TadsProvider>
+      </body>
+    </html>
   );
 }
